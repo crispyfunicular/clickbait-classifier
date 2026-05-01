@@ -1,0 +1,15 @@
+numpy>=1.26
+scipy>=1.11
+scikit-learn>=1.4
+
+# data handling
+pandas>=2.2
+polars>=1.0
+
+# notebooks
+jupyterlab>=4.2
+ipykernel>=6.29
+
+# plots (optional but useful for EDA)
+matplotlib>=3.8
+seaborn>=0.13

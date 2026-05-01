@@ -7,3 +7,78 @@ Projet de master de Machine Learning : Classification de titres d'articles (Clic
 3. Mettre en place des algorithmes de classification et d'évaluation avec Weka ou scikit
 4. Faire une évaluation
 5. Commenter le résultat
+
+## Feuille de route
+
+> Les étapes 1 et 2 des consignes sont déjà réalisées : thématique choisie (clickbait vs. authentique), jeu de données trouvé sur Kaggle.
+
+### Corpus
+
+- Fichier `clickbait_data.csv` : 32 000 titres en anglais
+- Colonnes : `headline` (texte brut) et `clickbait` (0 = authentique, 1 = clickbait)
+- Classes équilibrées : 16 001 non-clickbait / 15 999 clickbait — pas besoin de rééchantillonnage
+
+### Étape 1 — Exploration des données (EDA)
+
+- Charger le CSV avec `pandas` ou `polars`
+- Vérifier la distribution des classes et les longueurs de titres
+- Analyser les mots fréquents et n-grammes caractéristiques par classe
+- Visualiser quelques exemples représentatifs de chaque classe
+
+### Étape 2 — Prétraitement et vectorisation
+
+- Séparation train/test stratifiée : `train_test_split(..., stratify=y, test_size=0.2, random_state=42)`
+- **Vectorisation 1** — Bag of Words (`CountVectorizer`)
+- **Vectorisation 2** — TF-IDF (`TfidfVectorizer`)
+- (Optionnel) Traits linguistiques manuels : longueur du titre, présence de chiffres, points de suspension, pronoms interrogatifs, majuscules…
+
+> Le vectoriseur doit être entraîné (`fit`) uniquement sur le train, puis appliqué (`transform`) sur le test.
+
+### Étape 3 — Mise en place des algorithmes de classification
+
+Les consignes imposent 2 des 3 algorithmes suivants :
+
+- **Naive Bayes** — `MultinomialNB`
+- **SVM** — `LinearSVC` ou `SVC` (kernel RBF)
+- **Arbre de décision** — `DecisionTreeClassifier` (équivalent de J48)
+
+Optionnels pour enrichir la comparaison : `LogisticRegression`, `RandomForestClassifier`
+
+Utiliser des `Pipeline` scikit-learn pour combiner vectorisation et classifieur, afin d'éviter toute fuite de données.
+
+### Étape 4 — Évaluation
+
+- Métriques : accuracy, precision, recall, F1 (`classification_report`)
+- Validation croisée (k=5) avec `cross_val_score`
+- Recherche d'hyperparamètres avec `GridSearchCV`
+- Tableau de synthèse : accuracy + F1 macro par combinaison modèle × vectorisation
+
+### Étape 5 — Analyse et commentaires
+
+- Matrice de confusion par modèle
+- Exemples de titres mal classés
+- Traits les plus discriminants (`coef_` des modèles linéaires)
+- Discussion : quel modèle performe le mieux et pourquoi ?
+
+### Étape 6 — Rédaction du compte-rendu
+
+Sections obligatoires :
+
+- Objectifs du projet
+- Description des données (origine, format, statut juridique, distribution)
+- Méthodologie (étapes, choix techniques, reproductibilité)
+- Expériences réalisées (paramètres, mode de calcul)
+- Résultats et discussion
+
+### Livrables
+
+- Notebooks (`1_eda.ipynb`, `2_features.ipynb`, `3_models.ipynb` ou notebook unique)
+- `clickbait_data.csv`
+- `Nom1_Prenom1-Nom2_Prenom2.pdf`
+- Archive `.zip` avec tout le contenu, encodé en UTF-8
+
+### Points de vigilance
+
+- Ne jamais évaluer sur les données d'entraînement (`random_state=42` pour la reproductibilité)
+- Se méfier des résultats "trop beaux" : les justifier si F1 > 0.95
+- Tous les fichiers textes en UTF-8
