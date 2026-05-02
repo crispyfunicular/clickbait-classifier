@@ -18,14 +18,18 @@ Projet de master de Machine Learning : Classification de titres d'articles (Clic
 - Colonnes : `headline` (texte brut) et `clickbait` (0 = authentique, 1 = clickbait)
 - Classes équilibrées : 16 001 non-clickbait / 15 999 clickbait — pas besoin de rééchantillonnage
 
-### Étape 1 — Exploration des données (EDA)
+### Scripts
+Tous les scripts `.py` se trouvent dans le dossier `scripts/`
 
+#### Étape 1 - Exploration des données (EDA) -> fait
+
+- Script : `1_eda.py` (`python 1_eda.py` depuis la racine du dépôt)
 - Charger le CSV avec `pandas` ou `polars`
 - Vérifier la distribution des classes et les longueurs de titres
 - Analyser les mots fréquents et n-grammes caractéristiques par classe
 - Visualiser quelques exemples représentatifs de chaque classe
 
-### Étape 2 — Prétraitement et vectorisation
+#### Étape 2 - Prétraitement et vectorisation -> à faire
 
 - Séparation train/test stratifiée : `train_test_split(..., stratify=y, test_size=0.2, random_state=42)`
 - **Vectorisation 1** — Bag of Words (`CountVectorizer`)
@@ -34,7 +38,7 @@ Projet de master de Machine Learning : Classification de titres d'articles (Clic
 
 > Le vectoriseur doit être entraîné (`fit`) uniquement sur le train, puis appliqué (`transform`) sur le test.
 
-### Étape 3 — Mise en place des algorithmes de classification
+#### Étape 3 - Mise en place des algorithmes de classification
 
 Les consignes imposent 2 des 3 algorithmes suivants :
 
@@ -46,21 +50,21 @@ Optionnels pour enrichir la comparaison : `LogisticRegression`, `RandomForestCla
 
 Utiliser des `Pipeline` scikit-learn pour combiner vectorisation et classifieur, afin d'éviter toute fuite de données.
 
-### Étape 4 — Évaluation
+#### Étape 4 - Évaluation
 
 - Métriques : accuracy, precision, recall, F1 (`classification_report`)
 - Validation croisée (k=5) avec `cross_val_score`
 - Recherche d'hyperparamètres avec `GridSearchCV`
 - Tableau de synthèse : accuracy + F1 macro par combinaison modèle × vectorisation
 
-### Étape 5 — Analyse et commentaires
+#### Étape 5 - Analyse et commentaires
 
 - Matrice de confusion par modèle
 - Exemples de titres mal classés
 - Traits les plus discriminants (`coef_` des modèles linéaires)
 - Discussion : quel modèle performe le mieux et pourquoi ?
 
-### Étape 6 — Rédaction du compte-rendu
+### Compte-rendu
 
 Sections obligatoires :
 
@@ -72,7 +76,7 @@ Sections obligatoires :
 
 ### Livrables
 
-- Notebooks (`1_eda.ipynb`, `2_features.ipynb`, `3_models.ipynb` ou notebook unique)
+- Scripts ou notebooks (`1_eda.py`, puis `2_features` / `3_models` selon votre choix)
 - `clickbait_data.csv`
 - `Nom1_Prenom1-Nom2_Prenom2.pdf`
 - Archive `.zip` avec tout le contenu, encodé en UTF-8
