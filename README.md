@@ -29,8 +29,9 @@ Tous les scripts `.py` se trouvent dans le dossier `scripts/`
 - Analyser les mots fréquents et n-grammes caractéristiques par classe
 - Visualiser quelques exemples représentatifs de chaque classe
 
-#### Étape 2 - Prétraitement et vectorisation -> à faire
+#### Étape 2 - Prétraitement et vectorisation -> fait
 
+- Script : `2_features.py` (`python scripts/2_features.py` depuis la racine du dépôt)
 - Séparation train/test stratifiée : `train_test_split(..., stratify=y, test_size=0.2, random_state=42)`
 - **Vectorisation 1** — Bag of Words (`CountVectorizer`)
 - **Vectorisation 2** — TF-IDF (`TfidfVectorizer`)
