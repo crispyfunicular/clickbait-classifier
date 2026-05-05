@@ -27,7 +27,6 @@ import warnings
 import numpy as np  # Opérations numériques et scores
 import pandas as pd  # Chargement des données et tableau de synthèse
 from joblib import dump  # Sauvegarde des modèles entraînés
-from scipy import sparse  # Matrices clairsemées (sparse)
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer  # Vectorisation texte
 from sklearn.exceptions import ConvergenceWarning  # Warnings d'optimisation (LinearSVC)
 from sklearn.metrics import (
@@ -46,6 +45,8 @@ from sklearn.pipeline import FeatureUnion, Pipeline  # Pipelines (vectoriseur + 
 from sklearn.preprocessing import FunctionTransformer  # Ajout de features manuelles
 from sklearn.svm import LinearSVC  # SVM linéaire
 from sklearn.tree import DecisionTreeClassifier  # Arbre de décision
+
+from feature_utils import manual_features  # Features manuelles importables (joblib/pickle friendly)
 
 DATA_PATH = Path(__file__).resolve().parent.parent / "clickbait_data.csv"
 ARTIFACTS_DIR = Path(__file__).resolve().parent.parent / "artifacts" / "step3"
@@ -82,51 +83,6 @@ def make_split(df: pd.DataFrame) -> SplitData:
         stratify=y,
     )
     return SplitData(X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
-
-
-def manual_features(texts) -> sparse.csr_matrix:
-    """
-    Extrait quelques traits « faits main » à partir du texte brut.
-
-    Entrée : liste/array/Series de strings. Sortie : matrice sparse (n_samples, n_features).
-    """
-    # Normalisation en Series de strings (robuste aux entrées list/array/Series)
-    s = pd.Series(list(texts)).fillna("").astype(str)
-
-    # Longueurs (tendances générales : clickbait souvent plus "dense" / formaté)
-    n_chars = s.str.len().to_numpy(dtype=float)
-    n_words = s.str.split().str.len().fillna(0).to_numpy(dtype=float)
-
-    # Indices de style (ponctuation, chiffres, ellipses)
-    has_number = s.str.contains(r"\d", regex=True).to_numpy(dtype=float)
-    has_ellipsis = s.str.contains(r"\.\.\.|…", regex=True).to_numpy(dtype=float)
-    n_exclaim = s.str.count("!").to_numpy(dtype=float)
-    n_question = s.str.count(r"\?").to_numpy(dtype=float)
-
-    # Indices de "mise en scène" (caps, questions type "wh-words")
-    upper_ratio = (
-        s.apply(lambda t: (sum(c.isupper() for c in t) / max(len(t), 1))).to_numpy(dtype=float)
-    )
-    starts_with_wh = (
-        s.str.strip()
-        .str.lower()
-        .str.match(r"^(what|who|why|when|where|how)\b", na=False)
-        .to_numpy(dtype=float)
-    )
-
-    feats = np.column_stack(
-        [
-            n_chars,
-            n_words,
-            has_number,
-            has_ellipsis,
-            n_exclaim,
-            n_question,
-            upper_ratio,
-            starts_with_wh,
-        ]
-    )
-    return sparse.csr_matrix(feats)
 
 
 def make_feature_pipeline(

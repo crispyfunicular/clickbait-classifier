@@ -1,1 +1,16 @@
+# Environnements Python
 venv/
+.venv/
+
+# Artefacts générés par le pipeline
+artifacts/
+
+# Caches Python
+__pycache__/
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / éditeur
+.DS_Store
