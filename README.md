@@ -23,7 +23,7 @@ Tous les scripts `.py` se trouvent dans le dossier `scripts/`
 
 #### Étape 1 - Exploration des données (EDA) -> fait
 
-- Script : `1_eda.py` (`python 1_eda.py` depuis la racine du dépôt)
+- Script : `1_eda.py` (`python scripts/1_eda.py` depuis la racine du dépôt)
 - Charger le CSV avec `pandas` ou `polars`
 - Vérifier la distribution des classes et les longueurs de titres
 - Analyser les mots fréquents et n-grammes caractéristiques par classe
@@ -39,10 +39,11 @@ Tous les scripts `.py` se trouvent dans le dossier `scripts/`
 
 > Le vectoriseur doit être entraîné (`fit`) uniquement sur le train, puis appliqué (`transform`) sur le test.
 
-#### Étape 3 - Mise en place des algorithmes de classification
+#### Étape 3 - Mise en place des algorithmes de classification -> fait
 
 Les consignes imposent 2 des 3 algorithmes suivants :
 
+- Script : `3_models.py` (`python scripts/3_models.py` depuis la racine du dépôt)
 - **Naive Bayes** — `MultinomialNB`
 - **SVM** — `LinearSVC` ou `SVC` (kernel RBF)
 - **Arbre de décision** — `DecisionTreeClassifier` (équivalent de J48)
