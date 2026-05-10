@@ -84,7 +84,7 @@ Sections obligatoires :
 
 ### Livrables
 
-- Scripts ou notebooks (`1_eda.py`, puis `2_features` / `3_models` selon votre choix)
+- Scripts ou notebooks (`1_eda.py`, puis `2_features` / `3_models`)
 - `clickbait_data.csv`
 - `Nom1_Prenom1-Nom2_Prenom2.pdf`
 - Archive `.zip` avec tout le contenu, encodé en UTF-8
