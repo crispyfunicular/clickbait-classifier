@@ -4,6 +4,17 @@
 
 ---
 
+## Courte introduction
+Le concept de « piège à clics » (*clickbait* en anglais) est défini par le ministère de la Culture français comme un « [l]ien hypertextuel accrocheur conduisant à un contenu qui n’est qu’un leurre, mis en place à seule fin d’augmenter le trafic en incitant les internautes à cliquer ; par extension, le contenu lui-même ». Du point de vue des sciences de l’information, les travaux sur la manipulation de l’information proposent un cadre pour distinguer et ordonner différentes formes de distorsion (exactitude, intention, modalités d’énonciation, etc.) tout à fait utile pour situer le phénomène de *clickbait* dans un spectre plus large que la seule « infox » ou fake news explicite (Rubin et Chen, 2012).
+
+En traitement automatique du langage, le phénomène est surtout traité comme une classification de textes courts (titres, posts). Bien que des travaux récents analysent des stratégies linguistiques fines et explorent l’explicabilité des décisions des modèles (Nofar et al., 2025), le présent rapport se limite à une classification supervisée strictement binaire (clickbait / non-clickbait) sur des titres en anglais, avec des algorithmes classiques comparés entre eux.
+
+Enfin, il importe de rappeler que cette tâche s’inscrit néanmoins dans des enjeux plus larges de crédibilité et de manipulation médiatique.
+
+![Exemples de formulations clickbait](clickbaits.png)
+
+*Légende : collage illustrant des titres « piège à clics » - Source : Wikipedia.*
+
 ## Objectifs
 
 - Classifier automatiquement des titres d’articles en anglais en deux catégories : **non-clickbait** (0) vs **clickbait** (1) ;
@@ -116,9 +127,31 @@ cm = confusion_matrix(split.y_test, y_pred)
 
 ---
 
-## Expériences réalisées
-### Modèles testés
+## Modèles testés
 Modèles testés (parmi autres) : **MultinomialNB**, **LinearSVC**, **DecisionTreeClassifier**, combinés à BoW ou TF-IDF, avec ou sans traits manuels. Hyperparamètres de référence : ex. `LinearSVC(C=1.0, max_iter=20000)`, `MultinomialNB(alpha=1.0)`, arbre avec profondeur et `min_samples_split` fixés pour limiter le sur-apprentissage. Tableau complet : `artifacts/step3/summary.csv`.
+
+```python
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import LinearSVC
+from sklearn.tree import DecisionTreeClassifier
+
+# Définition des modèles (baseline NB, modèle fort SVM, et arbre en comparaison)
+models = {
+    "MultinomialNB": MultinomialNB(alpha=1.0), # Lissage de Laplace
+    "LinearSVC": LinearSVC(C=1.0, max_iter=20000), # classifieur linéaire sur vecteurs BoW ou TF-IDF
+    "DecisionTree": DecisionTreeClassifier(
+        random_state=42,
+        max_depth=30,
+        min_samples_split=10,
+    ),
+}
+```
+
+### MultinomialNB
+
+### LinearSVC
+
+### DecisionTreeClassifier
 
 ---
 
@@ -174,3 +207,7 @@ Modèles testés (parmi autres) : **MultinomialNB**, **LinearSVC**, **DecisionTr
 
 ## Bibliographie
 > van der Goot, R. (2021). *We Need to Talk About train-dev-test Splits*. In *Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing (EMNLP)*, p. 4485–4494.
+>
+> Rubin, V. L., & Chen, Y. (2012). Information Manipulation Classification Theory for LIS and NLP. In *Proceedings of the Association for Information Science and Technology Annual Meeting (ASIST)*, Baltimore, MD, USA.
+>
+> Nofar, L., Portal, T., Elbaz, A., Apartsin, A., & Aperstein, Y. (2025). An Interpretable Benchmark for Clickbait Detection and Tactic Attribution. *arXiv preprint* arXiv:2509.10937. https://arxiv.org/abs/2509.10937

@@ -195,8 +195,8 @@ def main():
 
     # Définition des modèles (baseline NB, modèle fort SVM, et arbre en comparaison)
     models = {
-        "MultinomialNB": MultinomialNB(alpha=1.0),
-        "LinearSVC": LinearSVC(C=1.0, max_iter=20000),
+        "MultinomialNB": MultinomialNB(alpha=1.0), # Lissage de Laplace
+        "LinearSVC": LinearSVC(C=1.0, max_iter=20000), # classifieur linéaire sur vecteurs BoW ou TF-IDF
         "DecisionTree": DecisionTreeClassifier(
             random_state=42,
             max_depth=30,
