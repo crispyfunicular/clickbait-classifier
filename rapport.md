@@ -25,35 +25,34 @@
 
 ---
 
-## Méthodologie (aperçu)
+## Méthodologie
 
-- **Découpage** : *train* / *test* 80 % / 20 %, stratifié sur le label, `random_state=42` (reproductibilité) - `scripts/2_features.py` (même logique dans `3_models.py`).
-```python
-# scripts/2_features.py — aperçu
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
-```
-- **Fuites** : vectorisation et modèle dans des pipelines scikit-learn ; le vectoriseur est ajusté uniquement sur le *train* - `scripts/3_models.py`.
-```python
-# scripts/3_models.py — aperçu
-if not add_manual:
-    return Pipeline([("vect", vectorizer), ("clf", classifier)])
-features = FeatureUnion([("text", vectorizer),
-                         ("manual", FunctionTransformer(manual_features, validate=False))])
-return Pipeline([("features", features), ("clf", classifier)])
-```
-- **Traits textuels** : sac de mots et bigrammes (`CountVectorizer`), TF-IDF (`TfidfVectorizer`), plus **traits manuels** optionnels (longueur, chiffres, suspension de points, etc. - `feature_utils.py`).
-```python
-# scripts/feature_utils.py — extraits
-has_number = s.str.contains(r"\d", regex=True).to_numpy(dtype=float)
-has_ellipsis = s.str.contains(r"\.\.\.|…", regex=True).to_numpy(dtype=float)
-n_question = s.str.count(r"\?").to_numpy(dtype=float)
+### Découpage train / test
+Les données ont été divisées en **deux partitions *train* et *test* (80 % / 20 %)**, de façon stratifiée sur le label `clickbait` et avec **`random_state=42`**, de sorte que le même découpage soit rejoué partout. Ainsi, les partitions *train* et *test* gardaient chacune à peu près la même proportion de 0 et de 1 que le jeu complet (via `stratify=y` dans `train_test_split`), évitant ainsi qu’un tirage aléatoire ne crée un bloc nettement plus riche en une classe que l’autre. Dans le code, cet appel est regroupé dans une fonction **`make_split`** dont la logique est reprise dans plusieurs scripts pour rester alignés sur ce split.
 
-# scripts/3_models.py — exemple de vectoriseur (TF-IDF, mêmes idées pour BoW)
-TfidfVectorizer(stop_words="english", max_features=50000, ngram_range=(1, 2))
+```python
+# scripts/2_features.py — fonction make_split (aperçu)
+def make_split(df: pd.DataFrame) -> SplitData:
+    X = df["headline"].astype(str)
+    y = df["clickbait"].to_numpy(dtype=int)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y,
+    )
+    return SplitData(X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)
 ```
-- **Validation croisée** : **5 folds** stratifiés sur le *train* pour comparer les modèles (`scripts/3_models.py`).
+
+### Absence de dev
+Nous n'avons pas utilisé de troisième ensemble « validation / dev » en tant que tel et n'avons donc pas réservé de sous-échantillon fixe entre train et test. En effet, le *test* (20 %) a servi de *hold-out* final pour les métriques (rapport, matrice de confusion dans `4_evaluate.py`, analyses dans `5_analysis.py`), toujours avec le même `seed` pour reproduire exactement les mêmes exemples en train vs test. Autrement dit, ces exemples de test n’entraient pas dans l’apprentissage du modèle ni dans la validation croisée sur le train et n'étaient consultés qu’une seule fois, pour mesurer les performances après coup, afin que le score reflète le mieux possible la capacité de généralisation et non un biais d’« entraînement sur le test ».
+
+
+### Validation croisée (à 5 plis)
+
+À l’étape 3 (`scripts/3_models.py`), la fonction `evaluate_model` enchaîne deux évaluations distinctes pour chaque pipeline (vectorisation + classifieur), toutes deux inscrites dans le tableau de synthèse ci-dessous.
+
+1. **Validation croisée** (colonnes *Acc. (CV)* et *F1 macro (CV)*) : Une validation croisée stratifiée à cinq plis (ou *5-fold cross validation* / CV) est appliquée uniquement sur `X_train` / `y_train`. Le *train* est découpé en cinq parts ; à chaque pli, le modèle s’entraîne sur quatre parts et est noté sur la cinquième, puis les cinq scores sont moyennés. Le jeu de test n’intervient à aucun moment dans cette boucle : il ne sert ni à l’apprentissage ni au calcul des métriques CV. Cette étape tient lieu de validation pour comparer les pipelines et lisser le hasard du découpage, sans équivalent d’un fichier *dev* séparé tenu à part.
+
+2. **Évaluation sur le hold-out** (colonnes *Acc. (test)* et *F1 macro (test)*) : Après la CV, le même pipeline est entraîné une dernière fois sur l’intégralité du train (`fit` sur tout `X_train`), puis évalué une fois sur le jeu de test (`predict` sur `X_test`). Ce sont ces scores qui remplissent les colonnes « test » du tableau et qui servent notamment au tri des lignes (meilleur F1 macro sur le test en tête). Le test est donc utilisé seulement pour cette mesure finale par pipeline.
+
 ```python
 # scripts/3_models.py — evaluate_model (extrait)
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -62,20 +61,63 @@ cv_scores = cross_validate(pipe, split.X_train, split.y_train, cv=cv,
 pipe.fit(split.X_train, split.y_train)
 y_pred = pipe.predict(split.X_test)
 ```
-- **Évaluation finale** : métriques sur le jeu de *test* uniquement (`scripts/4_evaluate.py`).
+
+| Modèle | Acc. (CV) | F1 macro (CV) | Acc. (test) | F1 macro (test) |
+|--------|-----------|---------------|-------------|-----------------|
+| LinearSVC — TF-IDF + manuels | 0,9812 | 0,9812 | 0,9827 | 0,9827 |
+| LinearSVC — BoW + manuels | 0,9752 | 0,9752 | 0,9794 | 0,9794 |
+| MultinomialNB — BoW + manuels | 0,9602 | 0,9602 | 0,9636 | 0,9636 |
+| MultinomialNB — TF-IDF | 0,9586 | 0,9586 | 0,9625 | 0,9625 |
+| MultinomialNB — BoW | 0,9590 | 0,9590 | 0,9609 | 0,9609 |
+| LinearSVC — TF-IDF | 0,9564 | 0,9564 | 0,9598 | 0,9598 |
+| MultinomialNB — TF-IDF + manuels | 0,9543 | 0,9543 | 0,9594 | 0,9594 |
+| LinearSVC — BoW | 0,9486 | 0,9486 | 0,9553 | 0,9553 |
+| DecisionTree — BoW + manuels | 0,9356 | 0,9356 | 0,9380 | 0,9380 |
+| DecisionTree — TF-IDF + manuels | 0,9345 | 0,9345 | 0,9344 | 0,9344 |
+| DecisionTree — BoW | 0,7640 | 0,7535 | 0,7628 | 0,7519 |
+| DecisionTree — TF-IDF | 0,7634 | 0,7529 | 0,7620 | 0,7510 |
+
+### Choix du meilleur pipeline et évaluation finale
+
+L’étape 4 (`scripts/4_evaluate.py`) s’appuie sur le fichier `artifacts/step3/best_model.joblib` produit à l’étape 3 (pipeline classé premier après tri du tableau de synthèse).
+
 ```python
-# scripts/4_evaluate.py — aperçu
-model = load(MODEL_PATH)
+# scripts/3_models.py - tri du tableau de synthèse et choix du pipeline sauvegardé (extrait)
+summary = pd.DataFrame(
+    [
+        {
+            "modèle": r["model"],
+            "cv_accuracy": r["cv_accuracy"],
+            "cv_f1_macro": r["cv_f1_macro"],
+            "test_accuracy": r["test_accuracy"],
+            "test_f1_macro": r["test_f1_macro"],
+        }
+        for r in results
+    ]
+).sort_values(["test_f1_macro", "test_accuracy"], ascending=False)
+best_name = summary.iloc[0]["modèle"]
+best = next(r for r in results if r["model"] == best_name)
+dump(best["estimator"], ARTIFACTS_DIR / "best_model.joblib")
+```
+
+Cette étape recalcule le découpage train/test avec la même fonction `make_split` et les mêmes hyperparamètres qu’aux étapes précédentes, charge le pipeline sauvegardé sans nouvel apprentissage, puis applique `predict` uniquement à `X_test`. Les sorties regroupent les indicateurs usuels (exactitude, F1 macro, rapport de classification) et des artefacts dans `artifacts/step4/` : scores tabulés, rapport texte et matrice de confusion au format image. Il s’agit d’une évaluation figée sur le hold-out, distincte du bloc d’entraînement / validation de l’étape 3. L’extrait ci-dessous reprend l’ordre réel des blocs dans le script (les détails d’affichage console et le tracé de la heatmap sont omis).
+
+```python
+# scripts/4_evaluate.py — ordre des opérations (extrait)
+split = make_split(load_data())
+model = load(MODEL_PATH)  # aucun fit : pipeline déjà entraîné à l’étape 3
 y_pred = model.predict(split.X_test)
-accuracy_score(split.y_test, y_pred)
-f1_score(split.y_test, y_pred, average="macro")
-classification_report(split.y_test, y_pred, digits=3)
+acc = accuracy_score(split.y_test, y_pred)
+f1m = f1_score(split.y_test, y_pred, average="macro")
+report = classification_report(split.y_test, y_pred, digits=3)
+cm = confusion_matrix(split.y_test, y_pred)
+# écritures dans artifacts/step4/ : classification_report.txt, scores.csv, confusion_matrix.png
 ```
 
 ---
 
 ## Expériences réalisées
-
+### Modèles testés
 Modèles testés (parmi autres) : **MultinomialNB**, **LinearSVC**, **DecisionTreeClassifier**, combinés à BoW ou TF-IDF, avec ou sans traits manuels. Hyperparamètres de référence : ex. `LinearSVC(C=1.0, max_iter=20000)`, `MultinomialNB(alpha=1.0)`, arbre avec profondeur et `min_samples_split` fixés pour limiter le sur-apprentissage. Tableau complet : `artifacts/step3/summary.csv`.
 
 ---
@@ -129,3 +171,6 @@ Modèles testés (parmi autres) : **MultinomialNB**, **LinearSVC**, **DecisionTr
 | Memory Loss |
 | The Tennis Racket |
 | Whose Concert Tour Should You Open For |
+
+## Bibliographie
+> van der Goot, R. (2021). *We Need to Talk About train-dev-test Splits*. In *Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing (EMNLP)*, p. 4485–4494.
