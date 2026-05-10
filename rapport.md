@@ -1,6 +1,6 @@
 # Traitement statistique des données - Clickbait / pièges à clics
 
-> Lena Baraquin & Morgane Bona-Pellissier (Maser 1 pluriTAL)
+> Lena Baraquin & Morgane Bona-Pellissier (Master 1 pluriTAL)
 
 ---
 
@@ -27,14 +27,14 @@
 
 ## Méthodologie (aperçu)
 
-- **Découpage** : *train* / *test* 80 % / 20 %, stratifié sur le label, `random_state=42` (reproductibilité) — `scripts/2_features.py` (même logique dans `3_models.py`).
+- **Découpage** : *train* / *test* 80 % / 20 %, stratifié sur le label, `random_state=42` (reproductibilité) - `scripts/2_features.py` (même logique dans `3_models.py`).
 ```python
 # scripts/2_features.py — aperçu
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 ```
-- **Fuites** : vectorisation et modèle dans des pipelines scikit-learn ; le vectoriseur est ajusté uniquement sur le *train* — `scripts/3_models.py`.
+- **Fuites** : vectorisation et modèle dans des pipelines scikit-learn ; le vectoriseur est ajusté uniquement sur le *train* - `scripts/3_models.py`.
 ```python
 # scripts/3_models.py — aperçu
 if not add_manual:
@@ -43,7 +43,7 @@ features = FeatureUnion([("text", vectorizer),
                          ("manual", FunctionTransformer(manual_features, validate=False))])
 return Pipeline([("features", features), ("clf", classifier)])
 ```
-- **Traits textuels** : sac de mots et bigrammes (`CountVectorizer`), TF-IDF (`TfidfVectorizer`), plus **traits manuels** optionnels (longueur, chiffres, suspension de points, etc. — `feature_utils.py`).
+- **Traits textuels** : sac de mots et bigrammes (`CountVectorizer`), TF-IDF (`TfidfVectorizer`), plus **traits manuels** optionnels (longueur, chiffres, suspension de points, etc. - `feature_utils.py`).
 ```python
 # scripts/feature_utils.py — extraits
 has_number = s.str.contains(r"\d", regex=True).to_numpy(dtype=float)
@@ -96,7 +96,7 @@ Modèles testés (parmi autres) : **MultinomialNB**, **LinearSVC**, **DecisionTr
 | 0 (non-clickbait) | 0,986 | **0,982** | 0,984 |
 | 1 (clickbait) | 0,982 | **0,987** | 0,984 |
 
-**Autres modèles** (aperçu — détail dans `summary.csv`) : MultinomialNB et arbres sont nettement au-dessous du SVM linéaire sur ce corpus ; les arbres sans traits manuels ou avec TF-IDF seuls peuvent fortement se dégrader.
+**Autres modèles** (aperçu - détail dans `summary.csv`) : MultinomialNB et arbres sont nettement au-dessous du SVM linéaire sur ce corpus ; les arbres sans traits manuels ou avec TF-IDF seuls peuvent fortement se dégrader.
 
 ---
 
