@@ -4,7 +4,7 @@
 
 ---
 
-## Courte introduction
+## Introduction
 Le concept de « piège à clics » (*clickbait* en anglais) est défini par le ministère de la Culture français comme un « [l]ien hypertextuel accrocheur conduisant à un contenu qui n’est qu’un leurre, mis en place à seule fin d’augmenter le trafic en incitant les internautes à cliquer ; par extension, le contenu lui-même ». Du point de vue des sciences de l’information, les travaux sur la manipulation de l’information proposent un cadre pour distinguer et ordonner différentes formes de distorsion (exactitude, intention, modalités d’énonciation, etc.) tout à fait utile pour situer le phénomène de *clickbait* dans un spectre plus large que la seule « infox » ou fake news explicite (Rubin et Chen, 2012).
 
 En traitement automatique du langage, le phénomène est surtout traité comme une classification de textes courts (titres, posts). Bien que des travaux récents analysent des stratégies linguistiques fines et explorent l’explicabilité des décisions des modèles (Nofar et al., 2025), le présent rapport se limite à une classification supervisée strictement binaire (clickbait / non-clickbait) sur des titres en anglais, avec des algorithmes classiques comparés entre eux.
@@ -57,7 +57,6 @@ Nous n'avons pas utilisé de troisième ensemble « validation / dev » en tant 
 
 
 ### Validation croisée (à 5 plis)
-
 À l’étape 3 (`scripts/3_models.py`), la fonction `evaluate_model` enchaîne deux évaluations distinctes pour chaque pipeline (vectorisation + classifieur), toutes deux inscrites dans le tableau de synthèse ci-dessous.
 
 1. **Validation croisée** (colonnes *Acc. (CV)* et *F1 macro (CV)*) : Une validation croisée stratifiée à cinq plis (ou *5-fold cross validation* / CV) est appliquée uniquement sur `X_train` / `y_train`. Le *train* est découpé en cinq parts ; à chaque pli, le modèle s’entraîne sur quatre parts et est noté sur la cinquième, puis les cinq scores sont moyennés. Le jeu de test n’intervient à aucun moment dans cette boucle : il ne sert ni à l’apprentissage ni au calcul des métriques CV. Cette étape tient lieu de validation pour comparer les pipelines et lisser le hasard du découpage, sans équivalent d’un fichier *dev* séparé tenu à part.
@@ -90,7 +89,7 @@ y_pred = pipe.predict(split.X_test)
 
 ### Choix du meilleur pipeline et évaluation finale
 
-L’étape 4 (`scripts/4_evaluate.py`) s’appuie sur le fichier `artifacts/step3/best_model.joblib` produit à l’étape 3 (pipeline classé premier après tri du tableau de synthèse).
+L’étape 4 (`scripts/4_evaluate.py`) s’appuie sur le fichier `artifacts/step3/best_model.joblib` produit à l’étape 3, qui reprend le pipeline classé premier après tri du tableau de synthèse.
 
 ```python
 # scripts/3_models.py - tri du tableau de synthèse et choix du pipeline sauvegardé (extrait)
@@ -149,9 +148,29 @@ models = {
 
 ### MultinomialNB
 
+Classifieur probabiliste basé sur le théorème de **Bayes** en supposant l'indépendance conditionnelle des traits. Pour chaque document, il calcule la probabilité a posteriori de chaque classe à partir des fréquences de mots observées à l'entraînement. Le paramètre `alpha=1.0` applique un lissage de Laplace pour éviter les probabilités nulles sur des mots absents du corpus d'entraînement.
+
+Bien adapté aux représentations "sacs de mots" (*bag of words*, ou BoW) (comptages entiers), il sert de baseline rapide et interprétable, mais suppose des traits indépendants et ignore l'ordre des mots (comme tout BoW).
+
 ### LinearSVC
 
+Classifieur à vecteurs de support linéaire. Il cherche l'hyperplan qui maximise la marge entre les deux classes dans l'espace des traits (BoW ou TF-IDF). La régularisation `C=1.0` contrôle le compromis biais–variance ; `max_iter=20000` assure la convergence sur un vocabulaire large.
+
+```python
+LinearSVC(C=1.0, max_iter=20000)
+```
+
+Très efficace en grande dimension (vocabulaire ~10 000+ tokens), c'est le modèle le plus performant sur ce corpus (~98 % F1). Ses coefficients sont directement lisibles pour identifier les mots les plus discriminants.
+
 ### DecisionTreeClassifier
+
+**Arbre de décision** qui partitionne récursivement l'espace des traits selon des seuils sur les valeurs de chaque token. À chaque nœud, il choisit la coupure qui maximise le gain d'information (entropie ou Gini). Les hyperparamètres `max_depth=30` et `min_samples_split=10` limitent le sur-apprentissage :
+
+```python
+DecisionTreeClassifier(random_state=42, max_depth=30, min_samples_split=10)
+```
+
+Plus interprétable visuellement, mais sensible au bruit et inférieur au SVM sur ce type de données textuelles en grande dimension.
 
 ---
 
@@ -175,13 +194,28 @@ models = {
 
 ---
 
-## Commentaire et interprétation (brouillon)
+## Commentaire et interprétation des résultats
 
-- Les deux classes obtiennent des scores très proches ; le **rappel** est légèrement plus faible pour la classe **0** que pour la **1** : un peu plus d’erreurs où un titre réel est pris pour du clickbait que l’inverse.  
-- Les **faux positifs** (ex. titres factuels avec formulation interrogative ou « accroche ») montrent que la frontière n’est pas purement lexicale : la presse utilise aussi des formulations « engageantes ».  
-- Les **faux négatifs** incluent souvent des titres **très courts** ou ambigus (*Memory Loss*, *The Tennis Racket*), où les indices associés au clickbait dans le corpus sont peu présents.  
-- Les **coefficients** du `LinearSVC` (`artifacts/step5/top_features.txt`) associent plutôt au clickbait des marqueurs de style (majuscules, termes type quiz/listicle) et au non-clickbait un vocabulaire plus « une factuelle » (économie, politique, etc.). Il s'agit des corrélations observées sur ce jeu et non d'une définition universelle du journalisme. La généralisation à d'autres sources n'est donc pas garantie.
-- **Prudence** : les scores ~98 % sont élevés (cohérents avec un corpus binaire bien séparé)
+### Analyse des erreurs
+
+Les deux classes, clickbait et non-clickbait, obtiennent des scores très proches (F1 ≈ 0,984 pour chacune), ce qui reflète un corpus équilibré. Le rappel est légèrement plus faible pour la classe **non-clickbait**, ce qui signifie que le modèle tend davantage à prendre un titre factuel pour du clickbait que l'inverse.
+
+Les **faux positifs** (titres factuels classés clickbait) correspondent souvent à des formulations interrogatives ou à fort pouvoir d'accroche (p. ex. *What Is Facebook Actually Worth ?*, *Happy Gilmore Was On to Something*) que la presse légitime emploie aussi. La frontière n'est donc pas purement lexicale. Elle tend d'ailleurs à s'estomper, dans la mesure où une partie des médias traditionnels a progressivement adopté des titres plus accrocheurs, sensationnalistes, pour capter l'attention en ligne, tandis que les techniques de clickbait imitent de mieux en mieux les conventions stylistiques de la presse sérieuse (Christin, 2018).
+
+Les **faux négatifs** (clickbaits non détectés) sont majoritairement des titres très courts ou sémantiquement ambigus (p. ex. *Memory Loss*, *The Tennis Racket*) qui ne contiennent pas les marqueurs stylistiques habituellement associés au clickbait dans le corpus.
+
+L'inspection des **coefficients** du `LinearSVC` (`artifacts/step5/top_features.txt`) confirme que le modèle s'appuie sur des corrélations de style plutôt que sur le sens. Il associe en effet au clickbait des termes caractéristiques de certains formats (listes, quizz, majuscules) et au non-clickbait un vocabulaire de « une » factuelle (économie, politique, géographie). Ces corrélations sont propres au corpus et ne constituent pas une définition universelle du clickbait.
+
+### Sur la valeur des scores (~98 %)
+
+Un F1 de 98 % sur une tâche binaire mérite d'être relativisé. Plusieurs facteurs expliquent probablement ce résultat très élevé :
+
+- **Corpus homogène et bien séparé.** Les deux classes proviennent de sources clairement distinctes (presse traditionnelle vs sites à clickbait). Le signal stylistique est fort et cohérentet le modèle n'a pas besoin de comprendre le sens pour bien classer.
+- **Tâche binaire artificielle.** La distinction est ici tranchée par construction. Une tâche plus réaliste (niveaux de clickbait graduels, sources mixtes, données multilingues) serait sensiblement plus difficile.
+- **Possible biais de source.** Si les deux classes sont issues de sources très distinctes, le classifieur peut apprendre des artefacts propres à ces sources (ponctuation, longueur moyenne, vocabulaire de domaine) plutôt que la notion de clickbait elle-même, ce qui limiterait sa généralisation.
+- **Corrélations de forme et non de sens.** Les représentations BoW et TF-IDF ne capturent que la présence et la fréquence des mots, pas leur signification ni leur contexte. Le modèle distingue les classes grâce à des indices superficiels (style, ponctuation, tournures récurrentes) sans comprendre pourquoi un titre est trompeur. Un titre clickbait bien camouflé dans un style factuel, ou un titre factuel au ton accrocheur, peut ainsi tromper le classifieur.
+
+Ces scores reflètent donc la facilité relative de la tâche sur ce corpus autant que la qualité intrinsèque du modèle.
 
 ### Matrice de confusion (jeu de test)
 
@@ -209,5 +243,7 @@ models = {
 > van der Goot, R. (2021). *We Need to Talk About train-dev-test Splits*. In *Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing (EMNLP)*, p. 4485–4494.
 >
 > Rubin, V. L., & Chen, Y. (2012). Information Manipulation Classification Theory for LIS and NLP. In *Proceedings of the Association for Information Science and Technology Annual Meeting (ASIST)*, Baltimore, MD, USA.
+>
+> Christin, A. (2018). *Clicks or Pulitzers ? Web Journalists and Their Metrics*. American Journal of Sociology, 123(5), 1382–1415. Vulgarisation : Stanford News, 21 mars 2018. <https://news.stanford.edu/stories/2018/03/this-stanford-scholar-learned-clickbait-will-surprise> (dernière consultation le 11 mai 2026)
 >
 > Nofar, L., Portal, T., Elbaz, A., Apartsin, A., & Aperstein, Y. (2025). An Interpretable Benchmark for Clickbait Detection and Tactic Attribution. *arXiv preprint* arXiv:2509.10937. https://arxiv.org/abs/2509.10937
