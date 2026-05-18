@@ -1,125 +1,139 @@
 # clickbait-classifier
-Projet de master de Machine Learning : Classification de titres d'articles (Clickbait vs Non-Clickbait) via des techniques de NLP avec Scikit-Learn.
 
-## Consignes :
-1. Décider d'une thématique générale
-2. Trouver un jeu de données et un certain nombre de catégories
-3. Mettre en place des algorithmes de classification et d'évaluation avec Weka ou scikit
-4. Faire une évaluation
-5. Commenter le résultat
+Projet de M1 pluriTAL — **Traitement statistique des données** : classification de titres d’articles en **clickbait** vs **non-clickbait** (NLP classique avec scikit-learn).
 
-## Feuille de route
+**Statut : projet rendu et livré** (mai 2026).
 
-> Les étapes 1 et 2 des consignes sont déjà réalisées : thématique choisie (clickbait vs. authentique), jeu de données trouvé sur Kaggle.
+Dépôt : https://github.com/crispyfunicular/clickbait_classifier
 
-### Corpus
+---
 
-- Fichier `clickbait_data.csv` : 32 000 titres en anglais
-- Colonnes : `headline` (texte brut) et `clickbait` (0 = authentique, 1 = clickbait)
-- Classes équilibrées : 16 001 non-clickbait / 15 999 clickbait — pas besoin de rééchantillonnage
+## Résumé
 
-### Scripts
-Tous les scripts `.py` se trouvent dans le dossier `scripts/`
+- **Corpus** : 32 000 titres en anglais (`clickbait_data.csv`), classes équilibrées (0 = presse traditionnelle, 1 = sites à clickbait).
+- **Pipeline** : EDA → vectorisation (BoW, TF-IDF) + traits manuels → comparaison de classifieurs → évaluation → analyse des erreurs.
+- **Meilleur modèle (jeu de test)** : `LinearSVC` + TF-IDF + traits manuels — **F1 macro ≈ 0,984** (accuracy identique).
+- **Compte-rendu** : [`rapport.md`](rapport.md) (source) ; PDF générable via Pandoc (voir ci-dessous).
 
-- Fichier utilitaire : `feature_utils.py` (fonctions partagées, notamment les features manuelles ; nécessaire pour pouvoir recharger les modèles sauvegardés avec `joblib`)
+Les scores élevés sont discutés dans le rapport (corpus homogène, frontière stylistique, corrélations de forme plutôt que de sens).
 
-#### Étape 1 - Exploration des données (EDA)
+---
 
-- Script : `1_eda.py` (`python scripts/1_eda.py` depuis la racine du dépôt)
-- Charger le CSV avec `pandas` ou `polars`
-- Vérifier la distribution des classes et les longueurs de titres
-- Analyser les mots fréquents et n-grammes caractéristiques par classe
-- Visualiser quelques exemples représentatifs de chaque classe
+## Livrables
 
-#### Étape 2 - Prétraitement et vectorisation
+| Élément | Fichier / dossier |
+|--------|-------------------|
+| Données | `clickbait_data.csv` |
+| Scripts | `scripts/1_eda.py` … `scripts/5_analysis.py`, `scripts/feature_utils.py` |
+| Artefacts | `artifacts/step3/`, `step4/`, `step5/` |
+| Rapport | `rapport.md` |
+| Illustration | `clickbaits.png` |
 
-- Script : `2_features.py` (`python scripts/2_features.py` depuis la racine du dépôt)
-- Séparation train/test stratifiée : `train_test_split(..., stratify=y, test_size=0.2, random_state=42)`
-- **Vectorisation 1** — Bag of Words (`CountVectorizer`)
-- **Vectorisation 2** — TF-IDF (`TfidfVectorizer`)
-- (Optionnel) Traits linguistiques manuels : longueur du titre, présence de chiffres, points de suspension, pronoms interrogatifs, majuscules…
+---
 
-> Le vectoriseur doit être entraîné (`fit`) uniquement sur le train, puis appliqué (`transform`) sur le test.
+## Structure du dépôt
 
-#### Étape 3 - Mise en place des algorithmes de classification
+```
+clickbait-classifier/
+├── clickbait_data.csv      # jeu de données
+├── rapport.md              # compte-rendu (Markdown)
+├── clickbaits.png
+├── scripts/
+│   ├── 1_eda.py            # exploration
+│   ├── 2_features.py       # vectorisation, split train/test
+│   ├── 3_models.py         # entraînement et comparaison des modèles
+│   ├── 4_evaluate.py       # métriques, matrice de confusion
+│   ├── 5_analysis.py       # faux positifs/négatifs, traits discriminants
+│   └── feature_utils.py    # traits manuels, utilitaires partagés
+└── artifacts/
+    ├── step3/summary.csv
+    ├── step4/              # scores, rapport, confusion_matrix.png
+    └── step5/              # false_positives.csv, false_negatives.csv, top_features.txt
+```
 
-Les consignes imposent 2 des 3 algorithmes suivants :
+---
 
-- Script : `3_models.py` (`python scripts/3_models.py` depuis la racine du dépôt)
-- **Naive Bayes** — `MultinomialNB`
-- **SVM** — `LinearSVC` ou `SVC` (kernel RBF)
-- **Arbre de décision** — `DecisionTreeClassifier` (équivalent de J48)
+## Installation et exécution
 
-Optionnels pour enrichir la comparaison : `LogisticRegression`, `RandomForestClassifier`
+Depuis la racine du dépôt :
 
-Utiliser des `Pipeline` scikit-learn pour combiner vectorisation et classifieur, afin d'éviter toute fuite de données.
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-#### Étape 4 - Évaluation
+Ordre recommandé (chaque script écrit dans `artifacts/`) :
 
-- Script : `4_evaluate.py` (`python scripts/4_evaluate.py` depuis la racine du dépôt)
-- Métriques : accuracy, precision, recall, F1 (`classification_report`)
-- Validation croisée (k=5) avec `cross_val_score`
-- Recherche d'hyperparamètres avec `GridSearchCV`
-- Tableau de synthèse : accuracy + F1 macro par combinaison modèle × vectorisation
-- Sorties : `artifacts/step4/` (rapport texte, scores CSV, matrice de confusion en PNG)
+```bash
+python scripts/1_eda.py
+python scripts/2_features.py
+python scripts/3_models.py
+python scripts/4_evaluate.py
+python scripts/5_analysis.py
+```
 
-#### Étape 5 - Analyse et commentaires
+**Reproductibilité** : split train/test 80 % / 20 %, stratifié, `random_state=42`. Les vectoriseurs sont ajustés (`fit`) uniquement sur le train.
 
-- Script : `5_analysis.py` (`python scripts/5_analysis.py` depuis la racine du dépôt)
-- Matrice de confusion par modèle
-- Exemples de titres mal classés
-- Traits les plus discriminants (`coef_` des modèles linéaires)
-- Discussion : quel modèle performe le mieux et pourquoi ?
-- Sorties : `artifacts/step5/` (faux positifs/négatifs en CSV, traits discriminants en TXT)
+---
 
-### Compte-rendu
+## Modèles et résultats
 
-Sections obligatoires :
+Trois algorithmes imposés par la consigne, testés avec BoW ou TF-IDF, avec ou sans traits manuels :
 
-- Objectifs du projet
-- Description des données (origine, format, statut juridique, distribution)
-- Méthodologie (étapes, choix techniques, reproductibilité)
-- Expériences réalisées (paramètres, mode de calcul)
-- Résultats et discussion
+| Modèle | Rôle |
+|--------|------|
+| `MultinomialNB` | baseline probabiliste |
+| `LinearSVC` | meilleures performances |
+| `DecisionTreeClassifier` | comparaison ; très dépendant des traits manuels |
 
-### Livrables
+**Résultats sur le jeu de test** (*n* = 6 400) — pipeline retenu : `LinearSVC | TF-IDF + manuels`
 
-- Scripts ou notebooks (`1_eda.py`, puis `2_features` / `3_models`)
-- `clickbait_data.csv`
-- `Nom1_Prenom1-Nom2_Prenom2.pdf`
-- Archive `.zip` avec tout le contenu, encodé en UTF-8
+| Indicateur | Valeur |
+|------------|--------|
+| Accuracy | 0,9842 |
+| F1 macro | 0,9842 |
 
-### Points de vigilance
+| Classe | Précision | Rappel | F1 |
+|--------|-----------|--------|-----|
+| 0 (non-clickbait) | 0,986 | 0,982 | 0,984 |
+| 1 (clickbait) | 0,982 | 0,987 | 0,984 |
 
-- Ne jamais évaluer sur les données d'entraînement (`random_state=42` pour la reproductibilité)
-- Se méfier des résultats "trop beaux" : les justifier si F1 > 0.95
-- Tous les fichiers textes en UTF-8
+Tableau complet des combinaisons modèle × vectorisation : `artifacts/step3/summary.csv`.
 
+**Traits discriminants** (extraits, `LinearSVC`) :
 
-## Résultats
+- Plutôt **clickbait** : `manual::upper_ratio`, `text::guess`, `text::tell`, `text::things`…
+- Plutôt **non-clickbait** : `text::wins`, `text::obama`, `text::economy`, `text::says`…
 
-Les résultats ci-dessous proviennent des scripts `scripts/3_models.py`, `scripts/4_evaluate.py` et `scripts/5_analysis.py`.
+Convention : `text::token` = mot/n-gramme du vectoriseur ; `manual::trait` = descripteur calculé sur le titre brut.
 
-- **Meilleur pipeline (test)** : `LinearSVC | TF-IDF + manuels`
-  - **Accuracy (test)** : 0.9842
-  - **F1 macro (test)** : 0.9842
-  - **Détail (test, rapport de classification)** :
-    - Classe 0 (non-clickbait) : precision 0.986 / recall 0.982 / F1 0.984 (support 3200)
-    - Classe 1 (clickbait) : precision 0.982 / recall 0.987 / F1 0.984 (support 3200)
+---
 
-- **Comparaison rapide des meilleurs modèles (F1 macro sur test)** :
-  - `LinearSVC | TF-IDF + manuels` : 0.9842
-  - `LinearSVC | BoW + manuels` : 0.9783
-  - `MultinomialNB | BoW + manuels` : 0.9644
+## Générer le PDF du rapport
 
-- **Traits discriminants (extraits, modèle linéaire)** :
-  - Lecture des noms de traits :
-    - `text::...` = un mot / n-gramme appris par le vectoriseur (ex: `text::obama` correspond au token “obama”)
-    - `manual::...` = un trait « fait main » calculé à partir du texte brut (ex: `manual::upper_ratio` = proportion de lettres majuscules dans le titre)
-  - Plutôt associés à **clickbait (classe 1)** : `manual::upper_ratio`, `text::guess`, `text::tell`, `text::things`, `text::identify`, `text::celebrities`…
-  - Plutôt associés à **non-clickbait (classe 0)** : `text::wins`, `text::obama`, `text::leader`, `text::china`, `text::economy`, `text::says`, `text::deal`…
+Avec [Pandoc](https://pandoc.org/) et XeLaTeX (caractères Unicode, français) :
 
-Fichiers produits :
-- `artifacts/step3/summary.csv` (tableau complet des scores modèle × vectorisation)
-- `artifacts/step4/` (scores + rapport + matrice de confusion)
-- `artifacts/step5/` (faux positifs/négatifs + traits discriminants)
+```bash
+pandoc rapport.md -o rapport.pdf --pdf-engine=xelatex \
+  -V documentclass=article -V geometry:margin=2.5cm -V lang=fr \
+  -V mainfont="DejaVu Serif"
+```
+
+Exécuter la commande depuis la racine du dépôt pour que les images (`artifacts/…`) soient résolues.
+
+---
+
+## Données
+
+- **Fichier** : `clickbait_data.csv` (UTF-8)
+- **Colonnes** : `headline`, `clickbait` (0 ou 1)
+- **Source** : [Kaggle — Clickbait dataset](https://www.kaggle.com/datasets/amananandrai/clickbait-dataset)
+- **Non-clickbait** : *WikiNews*, *New York Times*, *The Guardian*, *The Hindu*
+- **Clickbait** : *BuzzFeed*, *Upworthy*, *ViralNova*, etc.
+
+---
+
+## Références (rapport)
+
+Rubin & Chen (2012) ; van der Goot (2021) ; Christin (2018) ; Nofar et al. (2025) ; Commission d’enrichissement de la langue française (2020). Détail complet dans [`rapport.md`](rapport.md#bibliographie).
